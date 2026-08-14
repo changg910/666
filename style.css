@@ -540,7 +540,8 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
   /* ---- 表格最小寬度：原本 .data-table/.pulse-table 是 width:100%，代表會硬擠進手機螢幕、
      欄位跟文字被迫換行擠成好幾行，不會觸發外層容器的橫向捲動。這裡強制給一個最小寬度，
      讓表格維持正常比例，超出螢幕的部分改用手指左右滑動查看，不會再被擠壓變形 ---- */
-  .data-table,.pulse-table{min-width:640px;}
+  .data-table,.pulse-table{min-width:720px;}
+  .data-table th,.data-table td,.pulse-table th,.pulse-table td{white-space:nowrap;}
 
   /* ---- 輸入框字級提高到16px：手機瀏覽器（尤其iOS Safari）遇到小於16px的輸入框會在點擊時自動放大畫面，
      這裡只在手機版把字級調大到16px來避免這個問題，桌面版的輸入框字級不受影響 ---- */
@@ -554,6 +555,15 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
   /* ---- Modal：內距縮小，寬度貼齊螢幕 ---- */
   .modal{width:94vw;}
   .modal-body{padding:14px 16px;}
+  .modal-close{padding:10px;font-size:16px;}
+
+  /* ---- 觸控目標加大：月份箭頭、查看分析按鈕、分頁按鈕、切換鈕、勾選框，
+     原本是照滑鼠點擊設計的尺寸，手指點擊容易點不準或點到旁邊，這裡統一放大 ---- */
+  .month-nav-btn{width:38px;height:38px;font-size:16px;}
+  .icon-btn{padding:8px 12px;font-size:13.5px;}
+  .page-btn{padding:9px 14px;min-width:40px;font-size:13.5px;}
+  .segmented-btn{padding:10px 14px;font-size:13.5px;}
+  input[type=checkbox]{width:18px;height:18px;}
 
   /* ---- 側邊欄底部功能按鈕：字級略縮小，避免換行過多 ---- */
   .sidebar-footer{gap:6px;}
