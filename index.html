@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客戶月銷貨追蹤系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- 側邊導覽 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">銷</div>
+      <div class="brand-text">
+        <div class="brand-title">客戶銷貨追蹤</div>
+        <div class="brand-sub">Customer Sales Pulse</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item is-active" data-page="dashboard">
+        <span class="nav-icon">◆</span>首頁 Dashboard
+      </button>
+      <button class="nav-item" data-page="analysis">
+        <span class="nav-icon">◆</span>客戶分析
+      </button>
+      <button class="nav-item" data-page="trends">
+        <span class="nav-icon">◆</span>歷年趨勢比較
+      </button>
+      <button class="nav-item" data-page="sales">
+        <span class="nav-icon">◆</span>每月銷貨資料
+      </button>
+      <button class="nav-item" data-page="import">
+        <span class="nav-icon">◆</span>Excel 批次匯入
+      </button>
+      <button class="nav-item" data-page="reps">
+        <span class="nav-icon">◆</span>業務管理
+      </button>
+      <button class="nav-item" data-page="customers">
+        <span class="nav-icon">◆</span>客戶管理
+      </button>
+      <button class="nav-item" data-page="products">
+        <span class="nav-icon">◆</span>產品管理
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-ghost-small" id="btnBackupExport">匯出全部資料備份</button>
+      <label class="btn-ghost-small" id="btnBackupImportLabel">
+        還原備份檔
+        <input type="file" id="btnBackupImport" accept=".json" hidden>
+      </label>
+      <button class="btn-ghost-small" id="btnCheckStorage">檢查儲存空間</button>
+      <div class="footer-note" id="storageUsageNote">資料儲存於本機瀏覽器</div>
+    </div>
+  </aside>
+
+  <!-- 主內容 -->
+  <main class="main">
+
+    <!-- ========== 1. Dashboard ========== -->
+    <section class="page is-active" id="page-dashboard">
+      <header class="page-head">
+        <div>
+          <h1>首頁 Dashboard</h1>
+          <p class="page-desc">目前檢視月份的整體銷貨狀況與客戶動態</p>
+        </div>
+        <div class="page-head-controls">
+        <div class="month-picker">
+          <label>檢視區域</label>
+          <select id="dashRegionFilter" style="width:150px">
+            <option value="">全部（總覽）</option>
+          </select>
+        </div>
+        <div class="month-picker">
+          <label>比較對象</label>
+          <div class="segmented" id="dashCompareToggle">
+            <button type="button" class="segmented-btn is-active" data-mode="mom">上月</button>
+            <button type="button" class="segmented-btn" data-mode="yoy">去年同月</button>
+          </div>
+        </div>
+        <div class="month-picker">
+          <label>檢視月份</label>
+          <div style="display:flex;align-items:center;gap:5px">
+            <button type="button" class="month-nav-btn" id="dashMonthPrev" title="上個月">‹</button>
+            <select id="dashYearSelect" style="width:82px"></select>
+            <select id="dashMonthSelect" style="width:64px"></select>
+            <button type="button" class="month-nav-btn" id="dashMonthNext" title="下個月">›</button>
+          </div>
+        </div>
+        <div class="month-picker">
+          <label>&nbsp;</label>
+          <button class="btn-ghost" id="dashJumpLatest" style="font-size:12px;padding:8px 12px;">回到最新月份</button>
+        </div>
+        </div>
+      </header>
+
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <div class="dash-grid">
+        <div class="card">
+          <div class="card-head">
+            <h3>近 12 個月總銷貨趨勢</h3>
+          </div>
+          <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>需留意客戶</h3>
+            <select id="alertTagFilter" style="width:120px">
+              <option value="all">全部</option>
+              <option value="severeDecline">大幅下滑</option>
+              <option value="stopped">停購</option>
+              <option value="consecutiveDecline">連續下滑</option>
+              <option value="highValueAnomaly">高價值異常</option>
+            </select>
+          </div>
+          <div id="alertList" class="alert-list"></div>
+        </div>
+      </div>
+
+      <div class="dash-grid" style="grid-template-columns:1fr 1fr">
+        <div class="card">
+          <div class="card-head"><h3 id="moversIncreaseTitle">本月營收增加來源 Top 10</h3></div>
+          <div id="moversIncreaseList" class="alert-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="moversDecreaseTitle">本月營收減少來源 Top 10</h3></div>
+          <div id="moversDecreaseList" class="alert-list"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>客戶脈動</h3>
+          <span class="card-sub">所有客戶本月狀態一覽（跨所有產品加總，同一客戶的合併子帳號已加總計算）</span>
+          <select id="pulseStatusFilter" style="width:110px">
+            <option value="">全部狀態</option>
+            <option value="growth">成長</option>
+            <option value="decline">下滑</option>
+            <option value="stopped">停購</option>
+            <option value="stable">持平</option>
+            <option value="new">新客戶</option>
+          </select>
+          <select id="pulseSort" style="width:150px">
+            <option value="status">預設排序（異常優先）</option>
+            <option value="codeAsc">客戶編號 A→Z</option>
+            <option value="nameStroke">客戶名稱筆畫排序</option>
+          </select>
+          <input type="text" id="pulseSearch" class="input-search" placeholder="搜尋客戶編號或名稱...">
+        </div>
+        <div class="pulse-table-wrap">
+          <table class="pulse-table">
+            <thead>
+              <tr>
+                <th>客戶編號</th>
+                <th>客戶名稱</th>
+                <th>狀態</th>
+                <th id="pulsePrevHeader">上月銷貨</th>
+                <th>本月銷貨</th>
+                <th>增減幅度</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="pulseBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 2. 客戶管理 ========== -->
+    <section class="page" id="page-customers">
+      <header class="page-head">
+        <div>
+          <h1>客戶管理</h1>
+          <p class="page-desc">建立與維護客戶基本資料。客戶編號若為「基礎編號-1」「基礎編號-2」等格式，系統會自動合併計算至基礎編號的客戶。</p>
+        </div>
+        <div style="display:flex; gap:10px">
+          <button class="btn-ghost" id="btnDetectDuplicates">查看合併分組</button>
+          <button class="btn-primary" id="btnAddCustomer">+ 新增客戶</button>
+        </div>
+      </header>
+
+      <div class="card">
+        <div class="card-head">
+          <input type="text" id="customerSearch" class="input-search" placeholder="搜尋客戶編號 / 名稱 / 聯絡人...">
+          <select id="customerRegionFilter" style="width:150px">
+            <option value="">全部業務／區域</option>
+          </select>
+          <span class="card-sub" id="customerCount"></span>
+        </div>
+        <div class="card-head" id="customerBulkBar" style="display:none;background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:-4px 0 14px;">
+          <span id="customerSelectedCount" style="font-size:12.5px;font-weight:700;color:#1E4FA8;"></span>
+          <select id="customerBulkRepSelect" style="width:170px">
+            <option value="">（未指定）</option>
+          </select>
+          <button class="btn-primary" id="customerBulkAssignBtn" style="font-size:12px;padding:7px 14px;">指派選取客戶</button>
+          <button class="btn-ghost" id="customerBulkClearBtn" style="font-size:12px;padding:7px 14px;">取消選擇</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="customerSelectAll"></th>
+                <th>客戶編號</th>
+                <th>客戶名稱</th>
+                <th>業務／區域</th>
+                <th>分類</th>
+                <th>聯絡人</th>
+                <th>電話</th>
+                <th>合併狀態</th>
+                <th style="width:100px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="customerBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="customerPagination"></div>
+      </div>
+    </section>
+
+    <!-- ========== 3. 產品管理 ========== -->
+    <section class="page" id="page-products">
+      <header class="page-head">
+        <div>
+          <h1>產品管理</h1>
+          <p class="page-desc">建立與維護產品編號、名稱與分類</p>
+        </div>
+        <div style="display:flex; gap:10px">
+          <button class="btn-ghost" id="btnApplyStandardCategories">套用標準產品分類</button>
+          <button class="btn-primary" id="btnAddProduct">+ 新增產品</button>
+        </div>
+      </header>
+
+      <div class="card">
+        <div class="card-head">
+          <input type="text" id="productSearch" class="input-search" placeholder="搜尋產品編號 / 名稱...">
+          <select id="productCategoryFilter" style="width:170px">
+            <option value="">全部分類</option>
+          </select>
+          <span class="card-sub" id="productCount"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>產品編號</th>
+                <th>產品名稱</th>
+                <th>分類</th>
+                <th style="width:100px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="productBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="productPagination"></div>
+      </div>
+    </section>
+
+    <!-- ========== 3b. 業務管理 ========== -->
+    <section class="page" id="page-reps">
+      <header class="page-head">
+        <div>
+          <h1>業務管理</h1>
+          <p class="page-desc">建立業務／區域清單，供客戶指定歸屬與各頁面篩選使用</p>
+        </div>
+        <button class="btn-primary" id="btnAddRep">+ 新增業務／區域</button>
+      </header>
+
+      <div class="card">
+        <div class="card-head">
+          <input type="text" id="repSearch" class="input-search" placeholder="搜尋業務／區域名稱...">
+          <span class="card-sub" id="repCount"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>業務／區域名稱</th>
+                <th>負責客戶數</th>
+                <th style="width:100px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="repBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ========== 4. 每月銷貨資料 ========== -->
+    <section class="page" id="page-sales">
+      <header class="page-head">
+        <div>
+          <h1>每月銷貨資料</h1>
+          <p class="page-desc">手動新增、編輯或刪除單筆銷貨交易紀錄</p>
+        </div>
+        <button class="btn-primary" id="btnAddSale">+ 新增銷貨紀錄</button>
+      </header>
+
+      <div class="card">
+        <div class="card-head filter-row">
+          <div class="filter-item">
+            <label>檢視區域</label>
+            <select id="salesRegionFilter" style="width:150px">
+              <option value="">全部業務／區域</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>年份</label>
+            <select id="salesFilterYear"></select>
+          </div>
+          <div class="filter-item">
+            <label>月份</label>
+            <select id="salesFilterMonth"></select>
+          </div>
+          <div class="filter-item filter-grow">
+            <label>客戶</label>
+            <input type="text" id="salesFilterCustomer" placeholder="輸入客戶編號或名稱篩選...">
+          </div>
+          <div class="filter-item filter-grow">
+            <label>產品</label>
+            <input type="text" id="salesFilterProduct" placeholder="輸入產品編號或名稱篩選...">
+          </div>
+          <span class="card-sub" id="salesTotalLabel"></span>
+          <button class="btn-ghost" id="btnClearSalesFilters" style="font-size:12px;padding:6px 12px;">清除篩選</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>年 / 月</th>
+                <th>客戶</th>
+                <th>產品</th>
+                <th style="text-align:right">數量</th>
+                <th style="text-align:right">單價</th>
+                <th style="text-align:right">金額</th>
+                <th style="width:100px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="salesBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="salesPagination"></div>
+      </div>
+    </section>
+
+    <!-- ========== 5. Excel 匯入 ========== -->
+    <section class="page" id="page-import">
+      <header class="page-head">
+        <div>
+          <h1>Excel 批次匯入</h1>
+          <p class="page-desc">上傳銷貨交易明細 Excel 檔，系統自動比對客戶與產品並匯入</p>
+        </div>
+        <button class="btn-ghost" id="btnDownloadTemplate">下載匯入範本</button>
+      </header>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>步驟 1・指定業務／區域並選擇檔案</h3>
+        </div>
+        <div class="form-row" style="max-width:320px;margin-bottom:14px;">
+          <label>此批資料屬於（僅套用在「新建立」的客戶上，已存在的客戶不會被覆蓋）</label>
+          <select id="importRepSelect">
+            <option value="">（不指定）</option>
+          </select>
+        </div>
+        <div class="import-format-note">
+          <p>Excel 檔請包含以下欄位（第一列為標題），每一列代表一筆交易明細：</p>
+          <table class="mini-format-table">
+            <thead><tr><th>單據日期</th><th>客戶編號</th><th>客戶簡稱</th><th>產品名稱(含編號)</th><th>數量</th><th>單價</th><th>金額</th></tr></thead>
+            <tbody><tr><td>2026/03/04</td><td>B009</td><td>柏強商行</td><td>防水能 立裝 草綠色(A1001-1.11)</td><td>12</td><td>120</td><td>1,440</td></tr></tbody>
+          </table>
+          <p class="hint">若客戶編號或產品編號在系統中不存在，匯入時會自動建立新客戶／新產品。同一客戶＋產品＋日期＋金額若已匯入過會自動略過，不會重複累加。</p>
+        </div>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
+          <div class="dropzone-inner">
+            <div class="dropzone-icon">⇧</div>
+            <div class="dropzone-title">點擊選擇 Excel 檔案，或將檔案拖曳到這裡</div>
+            <div class="dropzone-sub">支援 .xlsx / .xls</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="importPreviewCard" style="display:none">
+        <div class="card-head">
+          <h3>步驟 2・確認匯入內容</h3>
+          <span class="card-sub" id="importSummary"></span>
+        </div>
+        <div class="table-wrap" style="max-height:360px">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>狀態</th>
+                <th>日期</th>
+                <th>客戶</th>
+                <th>產品</th>
+                <th style="text-align:right">數量</th>
+                <th style="text-align:right">金額</th>
+              </tr>
+            </thead>
+            <tbody id="importPreviewBody"></tbody>
+          </table>
+        </div>
+        <div class="import-actions">
+          <button class="btn-ghost" id="btnCancelImport">取消</button>
+          <button class="btn-primary" id="btnConfirmImport">確認匯入</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 6. 客戶分析 ========== -->
+    <section class="page" id="page-analysis">
+      <header class="page-head">
+        <div>
+          <h1>客戶分析</h1>
+          <p class="page-desc">單一客戶的銷貨趨勢、產品別狀況與狀態診斷</p>
+        </div>
+        <div class="page-head-controls">
+        <div class="month-picker">
+          <label>檢視區域</label>
+          <select id="analysisRegionFilter" style="width:150px">
+            <option value="">全部</option>
+          </select>
+        </div>
+        <div class="month-picker">
+          <label>比較對象</label>
+          <div class="segmented" id="analysisCompareToggle">
+            <button type="button" class="segmented-btn is-active" data-mode="mom">上月</button>
+            <button type="button" class="segmented-btn" data-mode="yoy">去年同月</button>
+          </div>
+        </div>
+        <div class="month-picker">
+          <label>選擇客戶</label>
+          <select id="analysisCustomerSelect"></select>
+        </div>
+        <div class="month-picker" id="analysisMonthControls" style="display:none">
+          <label>檢視月份</label>
+          <div style="display:flex;align-items:center;gap:5px">
+            <button type="button" class="month-nav-btn" id="analysisMonthPrev" title="上個月">‹</button>
+            <select id="analysisYearSelect" style="width:78px"></select>
+            <select id="analysisMonthSelect" style="width:60px"></select>
+            <button type="button" class="month-nav-btn" id="analysisMonthNext" title="下個月">›</button>
+            <button class="btn-ghost" id="analysisJumpLatest" style="font-size:11.5px;padding:7px 10px;">最新</button>
+          </div>
+        </div>
+        </div>
+      </header>
+
+      <div id="analysisEmpty" class="empty-state">
+        <p>請先於上方選擇一位客戶</p>
+      </div>
+
+      <div id="analysisContent" style="display:none">
+        <div class="kpi-grid" id="analysisKpi"></div>
+
+        <div class="dash-grid" style="grid-template-columns:1.3fr 1fr">
+          <div class="card">
+            <div class="card-head">
+              <h3 id="analysisChartTitle">近 12 個月銷貨趨勢</h3>
+            </div>
+            <div class="chart-wrap"><canvas id="analysisChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>品項集中度</h3>
+              <div class="segmented" id="analysisProductMixModeToggle" style="margin-left:auto">
+                <button type="button" class="segmented-btn is-active" data-mode="amount">依金額</button>
+                <button type="button" class="segmented-btn" data-mode="frequency">依頻率</button>
+              </div>
+            </div>
+            <div class="card-sub" id="analysisProductMixSummary" style="margin:-6px 0 8px;"></div>
+            <div class="chart-wrap"><canvas id="analysisProductMixChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>客戶月度銷貨診斷</h3>
+            <span class="card-sub">依「檢視月份」與交易紀錄自動判讀，僅供參考，實際原因仍需人工確認</span>
+          </div>
+
+          <div class="diagnosis-block diagnosis-summary">
+            <div class="diagnosis-title">1. 當月銷貨總結</div>
+            <div id="diagSummary" class="diagnosis-text"></div>
+          </div>
+
+          <div class="diagnosis-block">
+            <div class="diagnosis-title">2. 主要變化（最多5項）</div>
+            <div id="diagChanges"></div>
+          </div>
+
+          <div class="diagnosis-block">
+            <div class="diagnosis-title">3. 可能原因（系統假設，需人工確認）</div>
+            <div id="diagCauses"></div>
+          </div>
+
+          <div class="diagnosis-block">
+            <div class="diagnosis-title">4. 需要確認的資料</div>
+            <div id="diagChecks"></div>
+          </div>
+
+          <div class="diagnosis-block" style="margin-bottom:0">
+            <div class="diagnosis-title">5. 建議行動</div>
+            <div id="diagActions"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>產品別銷貨明細</h3>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>
+                    <div class="th-with-control">
+                      <span>產品名稱</span>
+                      <select id="analysisProductSort" class="th-inline-select">
+                        <option value="status">預設排序</option>
+                        <option value="nameStroke">筆畫排序</option>
+                      </select>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="th-with-control">
+                      <span>狀態</span>
+                      <select id="analysisProductStatusFilter" class="th-inline-select">
+                        <option value="">全部</option>
+                        <option value="growth">成長</option>
+                        <option value="decline">下滑</option>
+                        <option value="stopped">停購</option>
+                        <option value="stable">持平</option>
+                        <option value="new">新品</option>
+                      </select>
+                    </div>
+                  </th>
+                  <th id="analysisProductPrevHeader" style="text-align:right">上月金額</th>
+                  <th style="text-align:right">本月金額</th>
+                  <th style="text-align:right">增減幅度</th>
+                </tr>
+              </thead>
+              <tbody id="analysisProductBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 歷年趨勢比較 ========== -->
+    <section class="page" id="page-trends">
+      <header class="page-head">
+        <div>
+          <h1>歷年趨勢比較</h1>
+          <p class="page-desc">挑選多位客戶，比較跨年度／自訂區間的銷售數量與金額變化</p>
+        </div>
+      </header>
+
+      <div class="card">
+        <div class="card-head" style="flex-direction:column;align-items:stretch;gap:12px">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <div class="filter-item">
+              <label>比較模式</label>
+              <div class="segmented" id="trendCompareModeToggle">
+                <button type="button" class="segmented-btn is-active" data-mode="continuous">連續區間</button>
+                <button type="button" class="segmented-btn" data-mode="recurring">跨年同期比較</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 連續區間模式 -->
+          <div id="trendContinuousControls">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+              <div class="filter-item">
+                <label>快速區間</label>
+                <div class="trend-range-presets" id="trendRangePresets">
+                  <button type="button" class="trend-preset-btn" data-preset="thisYear">今年</button>
+                  <button type="button" class="trend-preset-btn" data-preset="lastYear">去年</button>
+                  <button type="button" class="trend-preset-btn" data-preset="h1">上半年</button>
+                  <button type="button" class="trend-preset-btn" data-preset="h2">下半年</button>
+                  <button type="button" class="trend-preset-btn" data-preset="last12months">近12個月</button>
+                  <button type="button" class="trend-preset-btn" data-preset="max">MAX</button>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <div class="filter-item">
+                <label>自訂區間・起</label>
+                <div style="display:flex;gap:4px">
+                  <select id="trendStartYear" style="width:82px"></select>
+                  <select id="trendStartMonth" style="width:62px"></select>
+                </div>
+              </div>
+              <div class="filter-item">
+                <label>自訂區間・迄</label>
+                <div style="display:flex;gap:4px">
+                  <select id="trendEndYear" style="width:82px"></select>
+                  <select id="trendEndMonth" style="width:62px"></select>
+                </div>
+              </div>
+              <div class="filter-item">
+                <label>顯示顆粒度</label>
+                <div class="segmented" id="trendGranularityToggle">
+                  <button type="button" class="segmented-btn is-active" data-gran="year">年度</button>
+                  <button type="button" class="segmented-btn" data-gran="month">月度</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 跨年同期比較模式：同一段月份區間，比較不同年份 -->
+          <div id="trendRecurringControls" style="display:none">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+              <div class="filter-item">
+                <label>比較月份區間（每年都套用同一段月份）</label>
+                <div class="trend-range-presets" id="trendRecurMonthPresets">
+                  <button type="button" class="trend-preset-btn" data-preset="h1">上半年（1~6月）</button>
+                  <button type="button" class="trend-preset-btn" data-preset="h2">下半年（7~12月）</button>
+                  <button type="button" class="trend-preset-btn" data-preset="fullyear">全年（1~12月）</button>
+                  <button type="button" class="trend-preset-btn" data-preset="q1">第一季（1~3月）</button>
+                  <button type="button" class="trend-preset-btn" data-preset="q2">第二季（4~6月）</button>
+                  <button type="button" class="trend-preset-btn" data-preset="q3">第三季（7~9月）</button>
+                  <button type="button" class="trend-preset-btn" data-preset="q4">第四季（10~12月）</button>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <div class="filter-item">
+                <label>月份區間・自訂</label>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <select id="trendRecurStartMonth" style="width:62px"></select>
+                  <span style="color:var(--muted);font-size:12px">～</span>
+                  <select id="trendRecurEndMonth" style="width:62px"></select>
+                </div>
+              </div>
+              <div class="filter-item">
+                <label>比較年份範圍</label>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <select id="trendRecurStartYear" style="width:82px"></select>
+                  <span style="color:var(--muted);font-size:12px">～</span>
+                  <select id="trendRecurEndYear" style="width:82px"></select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="trends-layout">
+        <!-- 左側：客戶分類 + 拖拉客戶清單（或分類本身） -->
+        <div class="card">
+          <div class="card-head">
+            <h3>比較單位</h3>
+            <div class="segmented" id="trendCompareUnitToggle" style="margin-left:auto">
+              <button type="button" class="segmented-btn is-active" data-unit="product">依客戶</button>
+              <button type="button" class="segmented-btn" data-unit="category">依業務</button>
+            </div>
+          </div>
+
+          <div id="trendProductStepPanel">
+            <div class="trend-deepdive-banner" id="trendDeepDiveBanner" style="display:none"></div>
+            <div class="card-head"><h3 id="trendStepTitle1">步驟1・選擇分類</h3></div>
+            <div class="trend-category-list" id="trendCategoryList" style="margin-bottom:8px"></div>
+
+            <div class="card-head" id="trendStepTitle2Row" style="margin-top:4px"><h3 id="trendStepTitle2">步驟2・拖拉客戶到右側</h3></div>
+            <input type="text" id="trendProductSearch" class="input-search" style="width:100%;margin-bottom:8px" placeholder="在此分類中搜尋...">
+            <div class="trend-source-list" id="trendSourceList"></div>
+          </div>
+
+          <div id="trendCategoryStepPanel" style="display:none">
+            <div class="card-head">
+              <h3>拖拉業務到右側</h3>
+              <button class="btn-ghost" id="trendSelectAllCategories" style="font-size:12px;padding:6px 12px;margin-left:auto">一鍵全選全部業務</button>
+            </div>
+            <div class="trend-source-list" id="trendCategorySourceList" style="max-height:none"></div>
+          </div>
+        </div>
+
+        <!-- 右側：已選擇比較 + 圖表 + 表格 -->
+        <div>
+          <div class="card">
+            <div class="card-head">
+              <h3>已選擇比較</h3>
+              <span class="card-sub" id="trendSelectedCount"></span>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);cursor:pointer;">
+                <input type="checkbox" id="trendShowSum" style="cursor:pointer">顯示加總線
+              </label>
+              <button class="btn-ghost" id="trendClearSelected" style="font-size:12px;padding:6px 12px;">清空全部</button>
+            </div>
+            <div class="trend-selected-panel" id="trendSelectedPanel">
+              <div class="empty-mini" id="trendSelectedEmpty">尚未選擇任何客戶，請從左側拖拉客戶到這裡（或直接點選客戶）</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3 id="trendChartTitle">趨勢圖</h3>
+              <div class="segmented" id="trendMetricToggle" style="margin-left:auto">
+                <button type="button" class="segmented-btn is-active" data-metric="amount">金額</button>
+                <button type="button" class="segmented-btn" data-metric="quantity">數量</button>
+              </div>
+            </div>
+            <div id="trendChartEmpty" class="empty-state">請先選擇至少一位客戶</div>
+            <div class="chart-wrap" id="trendChartWrap" style="display:none;overflow-x:auto;overflow-y:hidden;">
+              <div id="trendChartInner" style="height:100%;">
+                <canvas id="trendCompareChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>明細表格</h3></div>
+            <div id="trendTableEmpty" class="empty-state">請先選擇至少一位客戶</div>
+            <div class="table-wrap trend-detail-wrap" id="trendTableWrap" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ========== 客戶新增/編輯 Modal ========== -->
+<div class="modal-overlay" id="customerModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="customerModalTitle">新增客戶</h3>
+      <button class="modal-close" id="customerModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="customerId">
+      <div class="form-row">
+        <label>客戶編號</label>
+        <input type="text" id="customerCode" placeholder="例如：B009（選填，但建議填寫以避免同名客戶混淆）">
+      </div>
+      <div class="form-row">
+        <label>客戶名稱 *</label>
+        <input type="text" id="customerName" placeholder="例如：大昌貿易有限公司">
+      </div>
+      <div class="form-row">
+        <label>合併計算於（選填，手動覆蓋）</label>
+        <select id="customerMergeTo"></select>
+        <span style="font-size:11.5px;color:var(--muted)">若客戶編號結尾是 -1、-2 等序號，系統會自動合併至相同基礎編號的客戶，不需要在這裡另外設定。此欄位僅用於其他情況下的手動合併。</span>
+      </div>
+      <div class="form-row">
+        <label>業務／區域</label>
+        <select id="customerRep">
+          <option value="">（未指定）</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>分類</label>
+        <input type="text" id="customerCategory" placeholder="例如：經銷商 / 零售 / 電商">
+      </div>
+      <div class="form-row">
+        <label>聯絡人</label>
+        <input type="text" id="customerContact" placeholder="聯絡人姓名">
+      </div>
+      <div class="form-row">
+        <label>電話</label>
+        <input type="text" id="customerPhone" placeholder="聯絡電話">
+      </div>
+      <div class="form-row">
+        <label>備註</label>
+        <textarea id="customerNote" rows="2" placeholder="其他備註"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" id="customerCancelBtn">取消</button>
+      <button class="btn-primary" id="customerSaveBtn">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 合併分組總覽 Modal ========== -->
+<div class="modal-overlay" id="duplicateModalOverlay">
+  <div class="modal" style="width:520px">
+    <div class="modal-head">
+      <h3>依客戶編號自動合併的分組</h3>
+      <button class="modal-close" id="duplicateModalClose">✕</button>
+    </div>
+    <div class="modal-body" id="duplicateGroupsBody"></div>
+    <div class="modal-foot">
+      <button class="btn-ghost" id="duplicateCloseBtn">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 產品新增/編輯 Modal ========== -->
+<div class="modal-overlay" id="productModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="productModalTitle">新增產品</h3>
+      <button class="modal-close" id="productModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="productId">
+      <div class="form-row">
+        <label>產品編號</label>
+        <input type="text" id="productCode" placeholder="例如：A1001-1.11（選填）">
+      </div>
+      <div class="form-row">
+        <label>產品名稱 *</label>
+        <input type="text" id="productName" placeholder="例如：防水能 立裝 草綠色">
+      </div>
+      <div class="form-row">
+        <label>分類</label>
+        <input type="text" id="productCategory" list="productCategoryOptions" placeholder="例如：水性面漆系列（選填）">
+        <datalist id="productCategoryOptions"></datalist>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" id="productCancelBtn">取消</button>
+      <button class="btn-primary" id="productSaveBtn">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 業務/區域 新增/編輯 Modal ========== -->
+<div class="modal-overlay" id="repModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="repModalTitle">新增業務／區域</h3>
+      <button class="modal-close" id="repModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="repId">
+      <div class="form-row">
+        <label>業務／區域名稱 *</label>
+        <input type="text" id="repName" placeholder="例如：北區-王小明">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" id="repCancelBtn">取消</button>
+      <button class="btn-primary" id="repSaveBtn">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 銷貨新增/編輯 Modal ========== -->
+<div class="modal-overlay" id="saleModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="saleModalTitle">新增銷貨紀錄</h3>
+      <button class="modal-close" id="saleModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="saleId">
+      <div class="form-row">
+        <label>客戶 *</label>
+        <select id="saleCustomer"></select>
+      </div>
+      <div class="form-row">
+        <label>產品</label>
+        <select id="saleProduct">
+          <option value="">（未分類）</option>
+        </select>
+      </div>
+      <div class="form-row form-row-split">
+        <div>
+          <label>年 *</label>
+          <input type="number" id="saleYear" placeholder="2026">
+        </div>
+        <div>
+          <label>月 *</label>
+          <select id="saleMonth">
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+            <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row form-row-split">
+        <div>
+          <label>數量</label>
+          <input type="number" id="saleQty" placeholder="選填">
+        </div>
+        <div>
+          <label>單價</label>
+          <input type="number" id="saleUnitPrice" placeholder="選填">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>銷貨金額 *</label>
+        <input type="number" id="saleAmount" placeholder="0">
+      </div>
+      <div class="form-row">
+        <label>備註</label>
+        <input type="text" id="saleNote" placeholder="選填">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" id="saleCancelBtn">取消</button>
+      <button class="btn-primary" id="saleSaveBtn">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
