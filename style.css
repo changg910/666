@@ -537,6 +537,11 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
   /* ---- 表格：維持橫向捲動，但縮小內距與字級，減少擠壓感 ---- */
   .data-table th,.data-table td{padding:8px 10px;font-size:12.5px;}
 
+  /* ---- 表格最小寬度：原本 .data-table/.pulse-table 是 width:100%，代表會硬擠進手機螢幕、
+     欄位跟文字被迫換行擠成好幾行，不會觸發外層容器的橫向捲動。這裡強制給一個最小寬度，
+     讓表格維持正常比例，超出螢幕的部分改用手指左右滑動查看，不會再被擠壓變形 ---- */
+  .data-table,.pulse-table{min-width:640px;}
+
   /* ---- 輸入框字級提高到16px：手機瀏覽器（尤其iOS Safari）遇到小於16px的輸入框會在點擊時自動放大畫面，
      這裡只在手機版把字級調大到16px來避免這個問題，桌面版的輸入框字級不受影響 ---- */
   select,input[type=text],input[type=number],textarea{font-size:16px;}
