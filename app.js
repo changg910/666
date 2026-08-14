@@ -1097,7 +1097,22 @@ function getCompareLabel(mode, customRange) {
 }
 
 /* 計算某客戶連續成長／連續下滑幾個月（一律以「逐月比較」為準，不受頂端比較基準切換影響） */
+let momStreakCache = new Map();
+let momStreakCacheVersion = null;
+
+/* 連續成長／下滑月數。這個函式在 Dashboard 會被每一位客戶呼叫（成長客戶KPI用'growth'、
+   需留意客戶清單用'decline'），資料量一大、又剛好在手機上（處理器較弱）時，重複計算的
+   成本會比較有感。加上快取：只要客戶／銷貨資料沒有變動，同一位客戶、同一個月份、同一個
+   方向的結果直接沿用，不用每次重繪 Dashboard 都整批重算一次。 */
 function computeMomStreak(customerId, y, m, direction) {
+  const versionKey = `${salesDataVersion}_${customersDataVersion}`;
+  if (momStreakCacheVersion !== versionKey) {
+    momStreakCache = new Map();
+    momStreakCacheVersion = versionKey;
+  }
+  const cacheKey = `${customerId}|${y}|${m}|${direction}`;
+  if (momStreakCache.has(cacheKey)) return momStreakCache.get(cacheKey);
+
   let streak = 0, cy = y, cm = m;
   while (streak < 24) {
     const cur = sumForMerged(customerId, cy, cm);
@@ -1109,12 +1124,25 @@ function computeMomStreak(customerId, y, m, direction) {
     if (direction === 'decline' && delta <= DECLINE_THRESHOLD) { streak++; cy = prev.y; cm = prev.m; continue; }
     break;
   }
+  momStreakCache.set(cacheKey, streak);
   return streak;
 }
 
-/* 近 12 個月累積營收（用於高價值客戶排名） */
+/* 近 12 個月累積營收（用於高價值客戶排名）。跟 computeMomStreak 一樣會被每位客戶呼叫一次，
+   加上同一套快取邏輯，資料沒變動時不用每次重繪都重新加總一次。 */
+let trailing12Cache = new Map();
+let trailing12CacheVersion = null;
 function getTrailing12MonthRevenue(customerId, y, m) {
-  return last12Months(y, m).reduce((a, mo) => a + sumForMerged(customerId, mo.y, mo.m), 0);
+  const versionKey = `${salesDataVersion}_${customersDataVersion}`;
+  if (trailing12CacheVersion !== versionKey) {
+    trailing12Cache = new Map();
+    trailing12CacheVersion = versionKey;
+  }
+  const cacheKey = `${customerId}|${y}|${m}`;
+  if (trailing12Cache.has(cacheKey)) return trailing12Cache.get(cacheKey);
+  const result = last12Months(y, m).reduce((a, mo) => a + sumForMerged(customerId, mo.y, mo.m), 0);
+  trailing12Cache.set(cacheKey, result);
+  return result;
 }
 
 /* 找出某客戶在比較期間內，金額變動最大的單一產品 */
@@ -1382,9 +1410,9 @@ function renderDashboard() {
     const months = allMonthsInData();
     if (months.length) goToDashMonth(months[0].y, months[0].m);
   };
-  document.getElementById('pulseSearch').oninput = () => renderPulseTable(rows, cmpLabel);
-  document.getElementById('pulseStatusFilter').onchange = () => renderPulseTable(rows, cmpLabel);
-  document.getElementById('pulseSort').onchange = () => renderPulseTable(rows, cmpLabel);
+  document.getElementById('pulseSearch').oninput = () => { pulseCurrentPage = 1; renderPulseTable(rows, cmpLabel); };
+  document.getElementById('pulseStatusFilter').onchange = () => { pulseCurrentPage = 1; renderPulseTable(rows, cmpLabel); };
+  document.getElementById('pulseSort').onchange = () => { pulseCurrentPage = 1; renderPulseTable(rows, cmpLabel); };
   document.getElementById('alertTagFilter').onchange = () => renderAlertList(rows, y, m, cmpLabel, highValueIds);
 
   document.querySelectorAll('#dashCompareToggle .segmented-btn').forEach(btn => {
@@ -1562,6 +1590,9 @@ function renderAlertList(rows, y, m, cmpLabel, highValueIds) {
   }).join('');
 }
 
+let pulseCurrentPage = 1;
+const PULSE_PAGE_SIZE = 20;
+
 function renderPulseTable(rows, cmpLabel) {
   document.getElementById('pulsePrevHeader').textContent = `${cmpLabel}銷貨`;
   const search = document.getElementById('pulseSearch').value.trim().toLowerCase();
@@ -1583,11 +1614,16 @@ function renderPulseTable(rows, cmpLabel) {
     });
   }
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PULSE_PAGE_SIZE));
+  if (pulseCurrentPage > pageCount) pulseCurrentPage = pageCount;
+  const pageItems = filtered.slice((pulseCurrentPage - 1) * PULSE_PAGE_SIZE, pulseCurrentPage * PULSE_PAGE_SIZE);
+
   if (filtered.length === 0) {
     body.innerHTML = `<tr><td colspan="7" class="empty-mini">沒有符合條件的客戶資料</td></tr>`;
+    renderPagination('pulsePagination', 0, 1, PULSE_PAGE_SIZE, () => {});
     return;
   }
-  body.innerHTML = filtered.map(r => {
+  body.innerHTML = pageItems.map(r => {
     const st = r.st;
     const trendClass = st.status === 'growth' ? 'trend-up' : st.status === 'decline' ? 'trend-down' : '';
     return `<tr>
@@ -1600,6 +1636,7 @@ function renderPulseTable(rows, cmpLabel) {
       <td><button class="icon-btn" onclick="goToAnalysis('${r.c.id}')">查看分析</button></td>
     </tr>`;
   }).join('');
+  renderPagination('pulsePagination', filtered.length, pulseCurrentPage, PULSE_PAGE_SIZE, (p) => { pulseCurrentPage = p; renderPulseTable(rows, cmpLabel); });
 }
 
 function goToAnalysis(customerId) {
