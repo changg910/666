@@ -1217,6 +1217,9 @@ function getCurrentActivePageKey() {
 function initNav() {
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', () => {
+      // 手機版點了任一導覽項目後自動收合選單（桌面版沒有 is-open 這個狀態，不受影響）
+      document.querySelector('.sidebar').classList.remove('is-open');
+      document.getElementById('mobileNavBackdrop').classList.remove('is-active');
       // 離開目前頁面前，先記住捲動到哪裡，下次回來這一頁時才能還原
       const leavingKey = getCurrentActivePageKey();
       if (leavingKey) pageScrollPositions[leavingKey] = window.scrollY;
@@ -4194,6 +4197,16 @@ function refreshCurrentPage() {
    ========================================================= */
 
 function initEvents() {
+  // 手機版側邊選單開關（桌面版這兩個元素本來就被 CSS 隱藏，這裡的邏輯不影響桌面版行為）
+  document.getElementById('mobileNavToggle').addEventListener('click', () => {
+    document.querySelector('.sidebar').classList.toggle('is-open');
+    document.getElementById('mobileNavBackdrop').classList.toggle('is-active');
+  });
+  document.getElementById('mobileNavBackdrop').addEventListener('click', () => {
+    document.querySelector('.sidebar').classList.remove('is-open');
+    document.getElementById('mobileNavBackdrop').classList.remove('is-active');
+  });
+
   document.getElementById('btnAddCustomer').addEventListener('click', () => openCustomerModal());
   document.getElementById('customerModalClose').addEventListener('click', closeCustomerModal);
   document.getElementById('customerCancelBtn').addEventListener('click', closeCustomerModal);

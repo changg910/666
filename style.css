@@ -467,3 +467,84 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
 .trend-cell-primary{color:var(--ink);font-weight:700;}
 .trend-cell-secondary{color:var(--muted);font-weight:400;}
 .trend-detail-table .trend-group-end{border-right:2px solid var(--line-strong);}
+
+/* =========================================================
+   手機版響應式樣式
+   全部包在下面的 @media 裡，只有螢幕寬度 <=768px（手機、直向平板）才會生效，
+   桌面瀏覽（寬度 > 768px）完全套用不到這裡任何一條規則，畫面跟原本一模一樣。
+   ========================================================= */
+
+/* 手機版選單開關按鈕、遮罩層：桌面版預設隱藏 */
+.mobile-nav-toggle{
+  display:none;
+  position:fixed;top:14px;left:14px;z-index:60;
+  width:40px;height:40px;border-radius:8px;border:none;
+  background:var(--ink);color:#fff;font-size:18px;
+  align-items:center;justify-content:center;cursor:pointer;
+}
+.mobile-nav-backdrop{
+  display:none;position:fixed;inset:0;background:rgba(20,28,38,.45);z-index:45;
+}
+
+@media (max-width: 768px) {
+  .mobile-nav-backdrop.is-active{display:block;}
+
+  /* ---- 側邊選單：改成滑出式，預設收合，不再佔用版面空間 ---- */
+  .mobile-nav-toggle{display:flex;}
+
+  .app{display:block;}
+  .sidebar{
+    position:fixed;top:0;left:0;
+    width:236px;height:100vh;
+    transform:translateX(-100%);
+    transition:transform .2s ease;
+    z-index:50;
+  }
+  .sidebar.is-open{transform:translateX(0);}
+
+  .main{
+    padding:64px 14px 40px;
+    max-width:100%;
+  }
+
+  /* ---- 頁首：標題與控制項改成上下堆疊，每個控制項各自滿版寬 ---- */
+  .page-head{align-items:flex-start;}
+  .page-head-controls{flex-direction:column;align-items:stretch;width:100%;gap:10px;}
+  .page-head-controls .month-picker{width:100%;}
+  .page-head-controls .month-picker select,
+  .page-head-controls .month-picker input{width:100% !important;}
+
+  .page-head h1{font-size:18px;}
+
+  /* ---- KPI卡片、Dashboard雙欄區塊：收成單欄 ---- */
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:10px;}
+  .dash-grid{grid-template-columns:1fr !important;}
+
+  .card{padding:14px 16px;}
+
+  /* ---- 篩選列：改成上下堆疊，避免橫向擠壓 ---- */
+  .filter-row{flex-direction:column;align-items:stretch;}
+  .filter-row .filter-item{width:100%;}
+  .filter-row .filter-item select,
+  .filter-row .filter-item input{width:100% !important;}
+
+  .card-head{flex-wrap:wrap;gap:10px;}
+
+  /* ---- 歷年趨勢比較：左右兩欄改成上下堆疊 ---- */
+  .trends-layout{grid-template-columns:1fr;}
+
+  /* ---- 表格：維持橫向捲動，但縮小內距與字級，減少擠壓感 ---- */
+  .data-table th,.data-table td{padding:8px 10px;font-size:12.5px;}
+
+  /* ---- Modal：內距縮小，寬度貼齊螢幕 ---- */
+  .modal{width:94vw;}
+  .modal-body{padding:14px 16px;}
+
+  /* ---- 側邊欄底部功能按鈕：字級略縮小，避免換行過多 ---- */
+  .sidebar-footer{gap:6px;}
+}
+
+@media (max-width: 420px) {
+  /* 更窄的手機（例如 iPhone SE）：KPI卡片改回單欄，避免擠成兩欄看不清楚數字 */
+  .kpi-grid{grid-template-columns:1fr;}
+}
