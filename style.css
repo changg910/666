@@ -536,6 +536,11 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
   /* ---- 表格：維持橫向捲動，但縮小內距與字級，減少擠壓感 ---- */
   .data-table th,.data-table td{padding:8px 10px;font-size:12.5px;}
 
+  /* ---- 手機瀏覽改為唯讀模式：隱藏每一列的「編輯」「刪除」按鈕，避免小螢幕手指誤觸改到/刪到資料；
+     操作欄的標題本身也一併隱藏，不留一欄空的（只鎖定「操作」欄，不影響其他表格真正的資料欄位） ---- */
+  .row-actions{display:none;}
+  .col-actions{display:none;}
+
   /* ---- Modal：內距縮小，寬度貼齊螢幕 ---- */
   .modal{width:94vw;}
   .modal-body{padding:14px 16px;}

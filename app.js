@@ -715,9 +715,12 @@ function handleSaveError(label, err) {
   showToast(label + ' 儲存失敗：' + (err && err.message ? err.message : '請按 F12 查看主控台錯誤訊息'));
 }
 
+let customersDataVersion = 0; // 每次客戶資料異動就+1（含業務指派變動），讓需要用到客戶清單的快取知道能不能沿用
+
 function saveCustomers() {
   idbSet(STORAGE_KEY_CUSTOMERS, customers).catch(err => handleSaveError('客戶資料', err));
   rebuildMergeIndex();
+  customersDataVersion++;
 }
 function saveProducts() {
   idbSet(STORAGE_KEY_PRODUCTS, products).catch(err => handleSaveError('產品資料', err));
@@ -1365,7 +1368,7 @@ function renderDashboard() {
     </div>
   `;
 
-  renderTrendChart(y, m, rootCustomers);
+  renderTrendChart(y, m, rootCustomers, regionFilter);
   renderMoversSection(rows, y, m, dashboardCompareMode);
   renderAlertList(rows, y, m, cmpLabel, highValueIds);
   renderPulseTable(rows, cmpLabel);
@@ -1416,14 +1419,27 @@ function pulseCodeCell(rootId) {
   return `${mainCode} <span class="merge-badge" title="已合併：${escapeHtml(memberCodes.join('、'))}">+${memberCodes.length}</span>`;
 }
 
-function renderTrendChart(y, m, rootCustomers) {
+let dashTrendChartCache = { key: null, data: null, dataLastYear: null };
+
+function renderTrendChart(y, m, rootCustomers, regionFilter) {
   const months = last12Months(y, m);
   const labels = months.map(mo => `${mo.y}/${mo.m}`);
-  // 依「檢視區域」篩選後的客戶清單加總，而不是固定用全公司月度總額索引，
-  // 這樣選了某個業務時，這張圖才會只反映那個業務底下客戶的走勢
-  const sumForCustomers = (yy, mm) => rootCustomers.reduce((a, c) => a + sumForMerged(c.id, yy, mm), 0);
-  const data = months.map(mo => sumForCustomers(mo.y, mo.m));
-  const dataLastYear = months.map(mo => sumForCustomers(mo.y - 1, mo.m));
+
+  // 依「檢視區域」篩選後的客戶清單加總，而不是固定用全公司月度總額索引，這樣選了某個業務時，
+  // 這張圖才會只反映那個業務底下客戶的走勢。這個計算要掃過濾後的每位客戶×24個月，資料量一大
+  // （幾百位客戶）加上手機處理器較弱時會感覺得到延遲，所以加上快取：客戶/銷貨資料沒有變動、
+  // 檢視區域也沒換的話，直接沿用上次算好的結果，不用每次 Dashboard 重繪都重新掃一次。
+  const cacheKey = `${salesDataVersion}_${customersDataVersion}_${regionFilter}_${y}_${m}`;
+  let data, dataLastYear;
+  if (dashTrendChartCache.key === cacheKey) {
+    data = dashTrendChartCache.data;
+    dataLastYear = dashTrendChartCache.dataLastYear;
+  } else {
+    const sumForCustomers = (yy, mm) => rootCustomers.reduce((a, c) => a + sumForMerged(c.id, yy, mm), 0);
+    data = months.map(mo => sumForCustomers(mo.y, mo.m));
+    dataLastYear = months.map(mo => sumForCustomers(mo.y - 1, mo.m));
+    dashTrendChartCache = { key: cacheKey, data, dataLastYear };
+  }
   const hasLastYear = dataLastYear.some(v => v > 0);
 
   const datasets = [{ label: '本期銷貨金額', data, borderColor: '#2F6FED', backgroundColor: 'rgba(47,111,237,0.08)', borderWidth: 2, pointRadius: 3, pointHoverRadius: 6, pointBackgroundColor: '#2F6FED', fill: true, tension: 0.25 }];
