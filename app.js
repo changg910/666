@@ -722,9 +722,12 @@ function saveCustomers() {
 function saveProducts() {
   idbSet(STORAGE_KEY_PRODUCTS, products).catch(err => handleSaveError('產品資料', err));
 }
+let salesDataVersion = 0; // 每次銷貨資料異動就+1，讓「每月銷貨資料」頁面知道排序結果快取還能不能用
+
 function saveSales() {
   idbSet(STORAGE_KEY_SALES, sales).catch(err => handleSaveError('銷貨資料', err));
   rebuildSalesIndex();
+  salesDataVersion++;
 }
 function saveReps() {
   idbSet(STORAGE_KEY_REPS, reps).catch(err => handleSaveError('業務資料', err));
@@ -2195,28 +2198,53 @@ function getFilteredSales() {
   return filtered;
 }
 
+let salesResultCache = { key: null, sorted: null };
+
 function renderSalesPage() {
   populateSalesFilters();
   if (!salesFiltersLoaded) {
     salesFiltersLoaded = true;
     loadSalesFilterState(); // 選單選項就緒後，才套用上次記住的篩選條件
   }
-  const filtered = getFilteredSales();
-  const total = filtered.reduce((a, s) => a + Number(s.amount || 0), 0);
   const body = document.getElementById('salesBody');
 
-  // 排序改用查詢表（O(1)查詢），避免每次比較都重新線性搜尋 customers 陣列，
-  // 資料量一大（上萬筆交易）排序會變得很慢、切換這頁時明顯卡頓，這是主要瓶頸
-  const custNameMap = getCustomerNameMap();
-  const custLabelMap = getCustomerLabelMap();
-  const prodLabelMap = getProductLabelMap();
-  const sorted = filtered.slice().sort((a, b) => {
-    const k = monthKey(b.year, b.month) - monthKey(a.year, a.month);
-    if (k !== 0) return k;
-    const an = custNameMap.get(a.customerId) || '（已刪除客戶）';
-    const bn = custNameMap.get(b.customerId) || '（已刪除客戶）';
-    return an.localeCompare(bn, 'zh-Hant');
-  });
+  // 篩選＋排序的結果快取起來：只要篩選條件、比較資料版本沒有變，單純換頁就直接沿用上次算好的結果，
+  // 不用每次都重新篩選、排序一次上萬筆交易紀錄——手機處理器比較弱，這個重算的成本感受會更明顯。
+  const cacheKey = [
+    salesDataVersion,
+    document.getElementById('salesFilterYear').value,
+    document.getElementById('salesFilterMonth').value,
+    document.getElementById('salesFilterCustomer').value,
+    document.getElementById('salesFilterProduct').value,
+    document.getElementById('salesRegionFilter').value
+  ].join('|');
+
+  let sorted, custLabelMap, prodLabelMap, total;
+  if (salesResultCache.key === cacheKey) {
+    sorted = salesResultCache.sorted;
+    custLabelMap = salesResultCache.custLabelMap;
+    prodLabelMap = salesResultCache.prodLabelMap;
+    total = salesResultCache.total;
+  } else {
+    const filtered = getFilteredSales();
+    total = filtered.reduce((a, s) => a + Number(s.amount || 0), 0);
+
+    // 排序改用查詢表（O(1)查詢），避免每次比較都重新線性搜尋 customers 陣列，
+    // 資料量一大（上萬筆交易）排序會變得很慢、切換這頁時明顯卡頓，這是主要瓶頸
+    const custNameMap = getCustomerNameMap();
+    custLabelMap = getCustomerLabelMap();
+    prodLabelMap = getProductLabelMap();
+    sorted = filtered.slice().sort((a, b) => {
+      const k = monthKey(b.year, b.month) - monthKey(a.year, a.month);
+      if (k !== 0) return k;
+      const an = custNameMap.get(a.customerId) || '（已刪除客戶）';
+      const bn = custNameMap.get(b.customerId) || '（已刪除客戶）';
+      return an.localeCompare(bn, 'zh-Hant');
+    });
+
+    salesResultCache = { key: cacheKey, sorted, custLabelMap, prodLabelMap, total };
+  }
+
   document.getElementById('salesTotalLabel').textContent = `共 ${sorted.length} 筆・合計 $${fmtMoney(total)}`;
 
   const pageCount = Math.max(1, Math.ceil(sorted.length / SALES_PAGE_SIZE));
