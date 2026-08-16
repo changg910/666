@@ -519,9 +519,11 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
 
   /* 「檢視月份」是箭頭+年+月+箭頭放在同一列的複合控制項，不能套用上面「每個控制項都撐滿寬」的規則，
      不然兩個select都搶著要100%寬，會把箭頭按鈕擠壓成細條、選單也被撐出一大段空白。
-     這裡蓋掉上面的規則，改成：箭頭維持固定大小，年/月選單平均分配剩餘空間。 */
-  .page-head-controls .month-nav-row select{width:auto !important;flex:1;min-width:0;}
-  .page-head-controls .month-nav-row .month-nav-btn{width:38px !important;}
+     這裡蓋掉上面的規則：明確禁止換行、選單改回依內容決定寬度（不強制撐滿也不強制拉伸），
+     箭頭做成貼近選單高度的正方形按鈕，四個元素維持同一排。 */
+  .page-head-controls .month-nav-row{flex-wrap:nowrap;}
+  .page-head-controls .month-nav-row select{width:auto !important;flex:0 0 auto;}
+  .page-head-controls .month-nav-btn{width:34px !important;height:34px !important;flex:0 0 auto;font-size:14px;}
 
   .page-head h1{font-size:18px;}
 
