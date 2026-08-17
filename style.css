@@ -463,12 +463,16 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
 .trend-detail-wrap{max-height:480px;overflow-y:auto;}
 .trend-detail-wrap table{border-collapse:separate;border-spacing:0;}
 .trend-detail-wrap thead th{position:sticky;top:0;background:#F7F8FA;z-index:2;}
-.trend-detail-wrap .trend-period-col{position:sticky;left:0;background:var(--surface);z-index:1;box-shadow:1px 0 0 var(--line);}
+.trend-detail-wrap .trend-period-col{
+  position:sticky;left:0;background:var(--surface);z-index:1;box-shadow:1px 0 0 var(--line);
+  width:110px;min-width:110px;max-width:110px;
+}
 .trend-detail-wrap thead th.trend-period-col{z-index:3;background:#F7F8FA;}
 
 /* 明細表格：主要指標加深、次要指標變淺，並用較粗分隔線區分每個項目的欄位群組 */
 .trend-cell-primary{color:var(--ink);font-weight:700;}
 .trend-cell-secondary{color:var(--muted);font-weight:400;}
+.trend-detail-table{table-layout:fixed;}
 .trend-detail-table .trend-group-end{border-right:2px solid var(--line-strong);}
 
 /* =========================================================
