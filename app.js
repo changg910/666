@@ -2743,12 +2743,61 @@ function populateAnalysisSelect() {
   const rootCustomers = getRootCustomers().filter(c => matchesRegionFilter(c, regionFilter));
   if (rootCustomers.length === 0) {
     sel.innerHTML = `<option value="">尚無客戶</option>`;
+    syncAnalysisCustomerSearchDisplay();
     return;
   }
   sel.innerHTML = `<option value="">請選擇客戶...</option>` +
     rootCustomers.slice().sort((a, b) => (a.code || '').localeCompare(b.code || '', 'en', { numeric: true }) || a.name.localeCompare(b.name, 'zh-Hant'))
       .map(c => `<option value="${c.id}">${escapeHtml(mergedCustomerLabel(c.id))}</option>`).join('');
   if (prevVal && rootCustomers.some(c => c.id === prevVal)) sel.value = prevVal;
+  syncAnalysisCustomerSearchDisplay();
+}
+
+/* 「選擇客戶」搜尋輸入框只是隱藏的 <select> 的視覺前台：真正的選取狀態、原本所有讀取 sel.value 的邏輯
+   都不用改，這裡只負責讓搜尋框的顯示文字跟隱藏 select 目前選到的客戶保持同步 */
+function syncAnalysisCustomerSearchDisplay() {
+  const sel = document.getElementById('analysisCustomerSelect');
+  const input = document.getElementById('analysisCustomerSearchInput');
+  if (!input) return;
+  if (sel.value) {
+    const opt = sel.querySelector(`option[value="${CSS.escape(sel.value)}"]`);
+    input.value = opt ? opt.textContent : '';
+  } else {
+    input.value = '';
+  }
+}
+
+let analysisCustomerDropdownOpen = false;
+
+function renderAnalysisCustomerDropdown() {
+  const dropdown = document.getElementById('analysisCustomerDropdown');
+  if (!analysisCustomerDropdownOpen) { dropdown.style.display = 'none'; return; }
+
+  const regionFilter = document.getElementById('analysisRegionFilter').value;
+  const query = document.getElementById('analysisCustomerSearchInput').value.trim().toLowerCase();
+  let list = getRootCustomers().filter(c => matchesRegionFilter(c, regionFilter));
+  if (query) list = list.filter(c => (c.code || '').toLowerCase().includes(query) || c.name.toLowerCase().includes(query));
+  list.sort((a, b) => (a.code || '').localeCompare(b.code || '', 'en', { numeric: true }) || a.name.localeCompare(b.name, 'zh-Hant'));
+
+  dropdown.style.display = '';
+  if (list.length === 0) {
+    dropdown.innerHTML = `<div class="empty-mini">沒有符合條件的客戶</div>`;
+    return;
+  }
+  dropdown.innerHTML = list.map(c => `<div class="customer-dropdown-item" data-id="${c.id}">
+    <span class="code">${escapeHtml(c.code || '—')}</span>
+    <span class="name">${escapeHtml(mergedCustomerLabel(c.id))}</span>
+  </div>`).join('');
+  dropdown.querySelectorAll('.customer-dropdown-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const sel = document.getElementById('analysisCustomerSelect');
+      sel.value = item.dataset.id;
+      sel.dispatchEvent(new Event('change'));
+      analysisCustomerDropdownOpen = false;
+      renderAnalysisCustomerDropdown();
+      syncAnalysisCustomerSearchDisplay();
+    });
+  });
 }
 
 function renderAnalysisPage() {
@@ -2756,6 +2805,15 @@ function renderAnalysisPage() {
   populateAnalysisSelect();
   const sel = document.getElementById('analysisCustomerSelect');
   sel.onchange = () => renderAnalysisForCustomer(sel.value);
+
+  const searchInput = document.getElementById('analysisCustomerSearchInput');
+  searchInput.oninput = () => renderAnalysisCustomerDropdown();
+  searchInput.onfocus = () => {
+    analysisCustomerDropdownOpen = true;
+    searchInput.value = ''; // 展開時清空顯示文字，方便直接輸入搜尋，收合時 syncAnalysisCustomerSearchDisplay 會還原成目前選定的客戶
+    renderAnalysisCustomerDropdown();
+  };
+
   document.getElementById('analysisRegionFilter').onchange = () => {
     populateAnalysisSelect();
     if (sel.value) renderAnalysisForCustomer(sel.value);
@@ -3910,6 +3968,7 @@ function renderTrendProductStepPanel() {
 
     const c = customers.find(c => c.id === trendsState.deepDiveCustomerId);
     banner.style.display = '';
+    banner.className = 'trend-deepdive-banner';
     banner.innerHTML = `
       <span>🔎 目前分析：<strong>${escapeHtml(c ? c.name : '（已刪除客戶）')}</strong>${c && c.code ? `（${escapeHtml(c.code)}）` : ''} 的產品組合</span>
       <div style="display:flex;gap:8px;">
@@ -3932,7 +3991,27 @@ function renderTrendProductStepPanel() {
     }
   } else {
     lastDeepDiveCustomerId = null;
-    banner.style.display = 'none';
+    if (trendsState.selectedIds.length >= 1) {
+      // 已選至少1位客戶（含剛按過「＋加入其他客戶比較」保留的那1位）：
+      // 顯示「客戶比較模式」橫幅，用中性灰色跟深入模式的藍色做出區隔
+      banner.style.display = '';
+      banner.className = 'trend-deepdive-banner trend-compare-banner';
+      banner.innerHTML = `
+        <span>🔀 客戶比較模式・已選 ${trendsState.selectedIds.length} 位客戶</span>
+        <button type="button" class="btn-ghost" id="trendCompareClearBtn" style="font-size:12px;padding:6px 12px;">清空全部</button>
+      `;
+      document.getElementById('trendCompareClearBtn').addEventListener('click', () => {
+        trendsState.selectedIds = [];
+        trendsState._stash[trendsState.compareUnit] = trendsState.selectedIds;
+        renderTrendProductStepPanel();
+        renderTrendCategorySourceList();
+        renderTrendSelectedPanel();
+        renderTrendsChartAndTable();
+      });
+    } else {
+      banner.style.display = 'none';
+      banner.className = 'trend-deepdive-banner';
+    }
     title1.textContent = '步驟1・選擇客戶';
     searchInput.placeholder = '搜尋客戶編號或名稱...';
     renderTrendCategoryList(); // 分類數量>1時才會顯示成篩選列，否則自動隱藏
@@ -4291,6 +4370,17 @@ function refreshCurrentPage() {
    ========================================================= */
 
 function initEvents() {
+  // 客戶分析「選擇客戶」搜尋下拉：點清單以外的地方自動收合
+  document.addEventListener('click', (e) => {
+    if (!analysisCustomerDropdownOpen) return;
+    const box = document.getElementById('analysisCustomerSearchInput').closest('.month-picker');
+    if (box && !box.contains(e.target)) {
+      analysisCustomerDropdownOpen = false;
+      renderAnalysisCustomerDropdown();
+      syncAnalysisCustomerSearchDisplay();
+    }
+  });
+
   // 手機版側邊選單開關（桌面版這兩個元素本來就被 CSS 隱藏，這裡的邏輯不影響桌面版行為）
   document.getElementById('mobileNavToggle').addEventListener('click', () => {
     document.querySelector('.sidebar').classList.toggle('is-open');

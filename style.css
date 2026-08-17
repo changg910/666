@@ -191,6 +191,19 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
 
 /* ---------- Tables ---------- */
 .input-search{width:230px;}
+
+.customer-search-dropdown{
+  position:absolute;top:100%;left:0;margin-top:4px;z-index:30;
+  width:280px;max-height:300px;overflow-y:auto;
+  background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;
+  box-shadow:0 8px 24px rgba(20,28,38,.12);padding:6px;
+}
+.customer-dropdown-item{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;
+}
+.customer-dropdown-item:hover{background:#F0F2F5;}
+.customer-dropdown-item .code{font-family:var(--font-mono);color:var(--muted);font-size:11.5px;flex-shrink:0;min-width:52px;}
+.customer-dropdown-item .name{color:var(--ink);}
 .table-wrap{overflow-x:auto;}
 .pulse-table-wrap{overflow-x:auto;}
 .data-table,.pulse-table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -203,6 +216,8 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
 }
 .data-table tr:last-child td,.pulse-table tr:last-child td{border-bottom:none;}
 .num-cell{font-family:var(--font-mono);text-align:right;}
+.trend-up{color:var(--good);font-weight:700;}
+.trend-down{color:var(--bad);font-weight:700;}
 .row-actions{display:flex;gap:6px;}
 .icon-btn{
   all:unset;cursor:pointer;font-size:12px;color:var(--accent);
@@ -404,6 +419,9 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
   background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin-bottom:14px;
   font-size:12.5px;color:#1E4FA8;
 }
+/* 客戶比較模式（已選≥1位客戶但尚未進入單一客戶深入模式）用中性灰色，
+   跟深入模式的藍色做出區隔，一眼就能分辨現在是在「比較多位客戶」還是「深入看單一客戶的產品」 */
+.trend-compare-banner{background:#EEF0F3;color:#495566;}
 
 .trend-category-item{
   all:unset;cursor:pointer;display:flex;justify-content:space-between;

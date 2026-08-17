@@ -167,9 +167,9 @@
                 <th>客戶編號</th>
                 <th>客戶名稱</th>
                 <th>狀態</th>
-                <th id="pulsePrevHeader">上月銷貨</th>
-                <th>本月銷貨</th>
-                <th>增減幅度</th>
+                <th id="pulsePrevHeader" style="text-align:right">上月銷貨</th>
+                <th style="text-align:right">本月銷貨</th>
+                <th style="text-align:right">增減幅度</th>
                 <th></th>
               </tr>
             </thead>
@@ -444,9 +444,11 @@
             <button type="button" class="segmented-btn" data-mode="yoy">去年同月</button>
           </div>
         </div>
-        <div class="month-picker">
+        <div class="month-picker" style="position:relative;">
           <label>選擇客戶</label>
-          <select id="analysisCustomerSelect" style="width:260px"></select>
+          <input type="text" id="analysisCustomerSearchInput" class="input-search" style="width:260px" placeholder="搜尋客戶編號或名稱..." autocomplete="off">
+          <div class="customer-search-dropdown" id="analysisCustomerDropdown" style="display:none"></div>
+          <select id="analysisCustomerSelect" style="display:none"></select>
         </div>
         <div class="month-picker" id="analysisMonthControls" style="display:none">
           <label>檢視月份</label>
