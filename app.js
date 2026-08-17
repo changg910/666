@@ -4148,6 +4148,19 @@ function renderTrendsChartAndTable() {
   const qtyCls = trendsState.metric === 'quantity' ? primaryCls : secondaryCls;
   const amtCls = trendsState.metric === 'amount' ? primaryCls : secondaryCls;
 
+  // 每一欄的寬度都在這裡明確寫死，不讓瀏覽器自動分配（不管是自動模式還是固定模式，
+  // 遇到「欄位很少」或「欄位很多」的極端情況都會出包：太少會被撐爆、太多會被擠爆）。
+  // 期間欄 110px，每個項目的「數量」90px、「金額」115px（金額數字通常比較長），
+  // 選越多項目，表格總寬度就跟著變寬，超出畫面的部分交給既有的左右滑動處理。
+  const PERIOD_COL_WIDTH = 110, QTY_COL_WIDTH = 90, AMT_COL_WIDTH = 115;
+  let colgroupHtml = `<colgroup><col style="width:${PERIOD_COL_WIDTH}px">`;
+  trendsState.selectedIds.forEach(() => {
+    colgroupHtml += `<col style="width:${QTY_COL_WIDTH}px"><col style="width:${AMT_COL_WIDTH}px">`;
+  });
+  if (showSum) colgroupHtml += `<col style="width:${QTY_COL_WIDTH}px"><col style="width:${AMT_COL_WIDTH}px">`;
+  colgroupHtml += '</colgroup>';
+  const tableTotalWidth = PERIOD_COL_WIDTH + (trendsState.selectedIds.length + (showSum ? 1 : 0)) * (QTY_COL_WIDTH + AMT_COL_WIDTH);
+
   let theadHtml = '<thead><tr><th rowspan="2" class="trend-period-col" style="vertical-align:bottom">期間</th>';
   trendsState.selectedIds.forEach((id, i) => {
     const color = TREND_PALETTE[i % TREND_PALETTE.length];
@@ -4193,7 +4206,7 @@ function renderTrendsChartAndTable() {
   }
   tbodyHtml += '</tr></tbody>';
 
-  tableWrap.innerHTML = `<table class="data-table trend-detail-table">${theadHtml}${tbodyHtml}</table>`;
+  tableWrap.innerHTML = `<table class="data-table trend-detail-table" style="width:${tableTotalWidth}px">${colgroupHtml}${theadHtml}${tbodyHtml}</table>`;
   fixTrendTableStickyHeader();
 }
 

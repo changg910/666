@@ -474,6 +474,9 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
 .trend-cell-secondary{color:var(--muted);font-weight:400;}
 .trend-detail-table{table-layout:fixed;}
 .trend-detail-table .trend-group-end{border-right:2px solid var(--line-strong);}
+/* 防護性設定：每一欄寬度都已經由 JS 用 colgroup 明確算好，理論上不會再超出，
+   但萬一遇到極端誇張的數字，讓它優雅地截斷成「…」，而不是溢出跟隔壁欄的文字重疊在一起 */
+.trend-detail-table td,.trend-detail-table th{overflow:hidden;text-overflow:ellipsis;}
 
 /* =========================================================
    手機版響應式樣式
@@ -554,7 +557,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent);}
   /* ---- 表格最小寬度：原本 .data-table/.pulse-table 是 width:100%，代表會硬擠進手機螢幕、
      欄位跟文字被迫換行擠成好幾行，不會觸發外層容器的橫向捲動。這裡強制給一個最小寬度，
      讓表格維持正常比例，超出螢幕的部分改用手指左右滑動查看，不會再被擠壓變形 ---- */
-  .data-table,.pulse-table{min-width:720px;}
+  .data-table:not(.trend-detail-table),.pulse-table{min-width:720px;}
   .data-table th,.data-table td,.pulse-table th,.pulse-table td{white-space:nowrap;}
 
   /* ---- 輸入框字級提高到16px：手機瀏覽器（尤其iOS Safari）遇到小於16px的輸入框會在點擊時自動放大畫面，
