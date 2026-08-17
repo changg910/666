@@ -3667,7 +3667,7 @@ function populateTrendYearMonthSelects() {
   years.add(new Date().getFullYear());
   const yearArr = Array.from(years).sort((a, b) => a - b);
   const monthOpts = Array.from({ length: 12 }, (_, i) => i + 1).map(m => `<option value="${m}">${m}月</option>`).join('');
-  const yearOpts = yearArr.map(y => `<option value="${y}">${y}</option>`).join('');
+  const yearOpts = yearArr.map(y => `<option value="${y}">${y}年</option>`).join('');
 
   document.getElementById('trendStartYear').innerHTML = yearOpts;
   document.getElementById('trendStartYear').value = trendsState.startYear;
